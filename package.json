@@ -1,5 +1,5 @@
 {
-  "name": "laura-product-coaching",
+  "name": "product-coaching-site",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
