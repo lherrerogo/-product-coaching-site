@@ -283,6 +283,10 @@
   .intake textarea { min-height: 96px; resize: vertical; }
   .intake .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .intake .btn { justify-content: center; margin-top: 6px; }
+  .hp { position: absolute; left: -9999px; }
+  .js-form button[disabled] { opacity: .6; cursor: wait; }
+  .form-msg.error { color: #B3261E; font-weight: 600; }
+  .magnet .form-msg.error { color: #fff; }
 
   footer { background: var(--ink); color: #9AA1B8; padding: 46px 0; font-size: 0.88rem; }
   footer .wrap { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
@@ -765,11 +769,13 @@
           <li>One short, useful email a month. No spam</li>
         </ul>
       </div>
-      <form onsubmit="event.preventDefault(); this.innerHTML='<p style=&quot;font-family:var(--serif);font-size:1.5rem;color:#fff&quot;>Thank you. Check your inbox ✦</p>';">
-        <input type="text" placeholder="First name" aria-label="First name" required>
-        <input type="email" placeholder="Email" aria-label="Email" required>
+      <form class="js-form" data-subject="New self-check sign-up" data-success="<p style=&quot;font-family:var(--serif);font-size:1.5rem;color:#fff&quot;>Thank you ✦ I'll send your self-check to your inbox soon.</p>">
+        <input type="hidden" name="form" value="Product Career Self-Check">
+        <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <input type="text" name="name" placeholder="First name" aria-label="First name" required>
+        <input type="email" name="email" placeholder="Email" aria-label="Email" required>
         <button class="btn" type="submit">Send me the self-check →</button>
-        <small>Unsubscribe anytime.</small>
+        <small class="form-msg" role="status">Unsubscribe anytime.</small>
       </form>
     </div>
   </div>
@@ -827,15 +833,17 @@
         <span><strong>Laura Herrero González</strong>Product coach · Amsterdam · Marbella/Málaga</span>
       </div>
     </div>
-    <form class="intake reveal" onsubmit="event.preventDefault(); this.innerHTML='<h3>Thank you ✦</h3><p style=&quot;color:var(--ink-2)&quot;>I\'ll be in touch within two working days.</p>';">
+    <form class="intake reveal js-form" data-subject="New intro call request" data-success="<h3>Thank you ✦</h3><p style=&quot;color:var(--ink-2)&quot;>I'll be in touch within two working days.</p>">
+      <input type="hidden" name="form" value="Intro call request">
+      <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
       <h3>A few quick questions</h3>
       <div class="steps">Takes about a minute</div>
       <div class="row">
-        <label>Your name<input type="text" required></label>
-        <label>Email<input type="email" required></label>
+        <label>Your name<input type="text" name="name" required></label>
+        <label>Email<input type="email" name="email" required></label>
       </div>
       <label>Where are you now?
-        <select required>
+        <select name="stage" required>
           <option value="">Choose one</option>
           <option>I want to move into product</option>
           <option>I'm a new or mid-level PM</option>
@@ -845,13 +853,14 @@
         </select>
       </label>
       <label>Preferred language
-        <select>
+        <select name="language">
           <option>English</option>
           <option>Español</option>
         </select>
       </label>
-      <label>What would you like to work on?<textarea placeholder="Your goal or the challenge on your mind"></textarea></label>
+      <label>What would you like to work on?<textarea name="message" placeholder="Your goal or the challenge on your mind"></textarea></label>
       <button class="btn btn-primary" type="submit">Request my intro call →</button>
+      <p class="form-msg" role="status"></p>
     </form>
   </div>
 </section>
@@ -879,6 +888,34 @@
     if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
   }), { threshold: 0.12 });
   document.querySelectorAll('.reveal').forEach((el, i) => { el.style.transitionDelay = (i % 4) * 70 + 'ms'; io.observe(el); });
+
+  // Forms → Web3Forms (emails each submission to Laura)
+  const WEB3FORMS_KEY = '8bd3cd00-9f82-4a96-9b16-54750d196572';
+  document.querySelectorAll('.js-form').forEach(form => form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = form.querySelector('button[type="submit"]');
+    const msg = form.querySelector('.form-msg');
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const data = Object.fromEntries(new FormData(form));
+    data.access_key = WEB3FORMS_KEY;
+    data.subject = form.dataset.subject;
+    data.from_name = 'Laura Herrero website';
+    try {
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+      form.innerHTML = form.dataset.success;
+    } catch (err) {
+      btn.disabled = false; btn.textContent = label;
+      msg.classList.add('error');
+      msg.textContent = 'Sorry, that didn\'t go through. Please try again, or message me on LinkedIn.';
+    }
+  }));
 
   // Pain checklist
   const text = document.getElementById('painText');
